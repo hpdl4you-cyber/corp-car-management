@@ -12,31 +12,48 @@ type KakaoPlace = {
 };
 
 function loadKakaoSdk(key: string): Promise<void> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
+    // Already fully ready
     if (window.kakao?.maps?.services) {
       resolve();
       return;
     }
-    const scriptId = "kakao-map-sdk";
-    const init = () =>
-      window.kakao.maps.load(() => resolve());
 
-    if (window.kakao?.maps && !window.kakao.maps.services) {
-      // Loaded without services — can't re-load; resolve silently
-      resolve();
-      return;
-    }
-    if (document.getElementById(scriptId)) {
+    const scriptId = "kakao-map-sdk";
+
+    // Poll until services is available, with a 10-second timeout
+    const waitForServices = () => {
+      let attempts = 0;
       const iv = setInterval(() => {
-        if (window.kakao?.maps?.services) { clearInterval(iv); resolve(); }
+        attempts++;
+        if (window.kakao?.maps?.services) {
+          clearInterval(iv);
+          resolve();
+        } else if (attempts > 100) {
+          clearInterval(iv);
+          reject(new Error("Kakao SDK 초기화 시간이 초과되었습니다. 도메인 등록을 확인하세요."));
+        }
       }, 100);
+    };
+
+    // Script already injected — just wait for it to become ready
+    if (document.getElementById(scriptId)) {
+      waitForServices();
       return;
     }
+
     const s = document.createElement("script");
     s.id = scriptId;
     s.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${key}&autoload=false&libraries=services`;
     s.async = true;
-    s.onload = init;
+    s.onload = () => {
+      try {
+        window.kakao.maps.load(() => waitForServices());
+      } catch {
+        reject(new Error("Kakao SDK load() 실패"));
+      }
+    };
+    s.onerror = () => reject(new Error("Kakao SDK 스크립트 로드 실패"));
     document.head.appendChild(s);
   });
 }
@@ -56,15 +73,15 @@ export function KakaoPlaceSearchInput({
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [sdkReady, setSdkReady] = useState(false);
-  const [sdkError, setSdkError] = useState(false);
+  const [sdkError, setSdkError] = useState<string | null>(null);
   const queryRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const key = process.env.NEXT_PUBLIC_KAKAO_MAP_KEY;
-    if (!key) { setSdkError(true); return; }
+    if (!key) { setSdkError("NEXT_PUBLIC_KAKAO_MAP_KEY가 설정되지 않았습니다."); return; }
     loadKakaoSdk(key)
       .then(() => setSdkReady(!!window.kakao?.maps?.services))
-      .catch(() => setSdkError(true));
+      .catch((e: Error) => setSdkError(e.message));
   }, []);
 
   const handleSearch = async () => {
@@ -92,14 +109,17 @@ export function KakaoPlaceSearchInput({
   };
 
   if (sdkError) {
-    // Fallback: plain text input when SDK not configured
+    // Fallback: plain text input when SDK fails
     return (
-      <input
-        name={name}
-        defaultValue={defaultValue}
-        placeholder={placeholder}
-        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-      />
+      <div>
+        <input
+          name={name}
+          defaultValue={defaultValue}
+          placeholder={placeholder}
+          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+        />
+        <p className="text-xs text-red-500 mt-1">{sdkError}</p>
+      </div>
     );
   }
 
