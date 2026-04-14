@@ -14,31 +14,29 @@ type KakaoPlace = {
 function loadKakaoSdk(key: string): Promise<void> {
   return new Promise((resolve, reject) => {
     // Already fully ready
-    if (window.kakao?.maps?.services) {
+    if (typeof window.kakao?.maps?.services?.Places === "function") {
       resolve();
       return;
     }
 
     const scriptId = "kakao-map-sdk";
 
-    // Poll until services is available, with a 10-second timeout
-    const waitForServices = () => {
-      let attempts = 0;
-      const iv = setInterval(() => {
-        attempts++;
-        if (window.kakao?.maps?.services) {
-          clearInterval(iv);
-          resolve();
-        } else if (attempts > 100) {
-          clearInterval(iv);
-          reject(new Error("Kakao SDK 초기화 시간이 초과되었습니다. 도메인 등록을 확인하세요."));
-        }
-      }, 100);
+    const onReady = () => {
+      // kakao.maps.load callback fired — services should be available here
+      resolve();
     };
 
-    // Script already injected — just wait for it to become ready
+    const callLoad = () => {
+      if (typeof window.kakao?.maps?.load === "function") {
+        window.kakao.maps.load(onReady);
+      } else {
+        reject(new Error("kakao.maps.load를 찾을 수 없습니다."));
+      }
+    };
+
+    // Script already injected — call load directly
     if (document.getElementById(scriptId)) {
-      waitForServices();
+      callLoad();
       return;
     }
 
@@ -46,14 +44,8 @@ function loadKakaoSdk(key: string): Promise<void> {
     s.id = scriptId;
     s.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${key}&autoload=false&libraries=services`;
     s.async = true;
-    s.onload = () => {
-      try {
-        window.kakao.maps.load(() => waitForServices());
-      } catch {
-        reject(new Error("Kakao SDK load() 실패"));
-      }
-    };
-    s.onerror = () => reject(new Error("Kakao SDK 스크립트 로드 실패"));
+    s.onload = callLoad;
+    s.onerror = () => reject(new Error("카카오 SDK 스크립트 로드 실패 — 네트워크 또는 앱키를 확인하세요."));
     document.head.appendChild(s);
   });
 }
@@ -80,7 +72,15 @@ export function KakaoPlaceSearchInput({
     const key = process.env.NEXT_PUBLIC_KAKAO_MAP_KEY;
     if (!key) { setSdkError("NEXT_PUBLIC_KAKAO_MAP_KEY가 설정되지 않았습니다."); return; }
     loadKakaoSdk(key)
-      .then(() => setSdkReady(!!window.kakao?.maps?.services))
+      .then(() => {
+        if (typeof window.kakao?.maps?.services?.Places === "function") {
+          setSdkReady(true);
+        } else {
+          setSdkError(
+            "카카오맵 서비스 라이브러리 로드 실패 — 카카오 개발자 콘솔에서 '제품 설정 → 카카오맵 → 활성화'를 확인하세요.",
+          );
+        }
+      })
       .catch((e: Error) => setSdkError(e.message));
   }, []);
 
