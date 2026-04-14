@@ -30,7 +30,7 @@ export default async function ReservationsPage() {
     .where(and(ne(reservations.status, "cancelled")));
 
   return (
-    <div className="p-6">
+    <div className="p-6 bg-white min-h-screen">
       <h1 className="text-2xl font-bold mb-4">예약 캘린더</h1>
       <div className="bg-white rounded-lg border border-gray-200 p-4">
         <WeeklyCalendar

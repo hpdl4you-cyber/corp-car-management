@@ -26,7 +26,7 @@ export default async function RootLayout({
         {user ? (
           <div className="flex min-h-screen">
             <Sidebar user={user} />
-            <main className="flex-1 overflow-x-hidden">{children}</main>
+            <main className="flex-1 overflow-x-hidden bg-white">{children}</main>
           </div>
         ) : (
           <main className="min-h-screen">{children}</main>

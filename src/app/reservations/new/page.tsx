@@ -20,7 +20,7 @@ export default async function NewReservationPage({
     .orderBy(asc(vehicles.plate));
 
   return (
-    <div className="p-8">
+    <div className="p-8 bg-white min-h-screen">
       <h1 className="text-2xl font-bold mb-6">차량 예약</h1>
       <ReservationForm
         vehicles={list}
