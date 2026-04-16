@@ -4,6 +4,7 @@ import { getDb } from "@/db";
 import { reservations, vehicles, users, maintenanceRecords } from "@/db/schema";
 import { requireUser } from "@/lib/rbac";
 import { formatDateTime } from "@/lib/utils";
+import { DatePickerNav } from "@/components/dashboard/DatePickerNav";
 
 // ── KST helpers ──────────────────────────────────────────────────────────────
 
@@ -224,30 +225,14 @@ export default async function DashboardPage({
           {/* Header with date navigation */}
           <div className="flex items-center gap-3 mb-3">
             <h2 className="font-semibold">차량 현황</h2>
-            <div className="flex items-center gap-2 ml-auto text-sm">
-              <Link
-                href={`/?date=${prevDate}`}
-                className="px-2 py-1 rounded hover:bg-gray-100 text-gray-600 font-medium"
-              >
-                ←
-              </Link>
-              <span className="font-medium text-gray-800 min-w-[160px] text-center">
-                {formatKstDate(selectedDate)}
-              </span>
-              <Link
-                href={`/?date=${nextDate}`}
-                className="px-2 py-1 rounded hover:bg-gray-100 text-gray-600 font-medium"
-              >
-                →
-              </Link>
-              {!isToday && (
-                <Link
-                  href="/"
-                  className="ml-2 px-2 py-1 rounded text-xs bg-gray-100 hover:bg-gray-200 text-gray-600"
-                >
-                  오늘
-                </Link>
-              )}
+            <div className="ml-auto">
+              <DatePickerNav
+                selectedDate={selectedDate}
+                displayLabel={formatKstDate(selectedDate)}
+                prevDate={prevDate}
+                nextDate={nextDate}
+                isToday={isToday}
+              />
             </div>
           </div>
 
